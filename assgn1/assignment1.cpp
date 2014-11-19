@@ -50,7 +50,6 @@ int main(int argc, char* argv[]) {
 	/// get image filenames
 	string path = pom["path"].as<string>();
   cout << "using path " << path << endl;
-	string debug_img_path = pom["debug"].as<string>();
 	vector<string> trainImgs, testImgs;
 	{
 		namespace fs = boost::filesystem; 
@@ -82,11 +81,15 @@ int main(int argc, char* argv[]) {
 	
   // Check if the user just wants to test the classification on some images
   if (pom.count("debug")) {
+    char key = 0;
+    string debug_img_path = pom["debug"].as<string>();
     cout << "Debugging with image " << debug_img_path << endl;
     cv::Mat3b img = cv::imread(debug_img_path);
     cv::Mat1b hyp = model.classify(img);
     cv::imshow("Debug image", hyp);
-    cv::waitKey(0);
+    while (key != 'q') {
+      key = cv::waitKey(0);
+    }
   } else { // Only test on all data when the debug parameter isn't set 
     /// test model with all images in the test folder, 
     ROC<int> roc;
@@ -109,8 +112,11 @@ int main(int argc, char* argv[]) {
     
     /// Display final result if desired
     if (pom.count("gui")) {
+      char key = 0;
       cv::imshow("ROC", roc.draw());
-      cv::waitKey(0);
+      while (key != 'q') {
+        key = cv::waitKey(0);
+      }
     }
 
     /// Ouput a summary of the data if required
