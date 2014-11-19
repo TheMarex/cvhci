@@ -8,7 +8,7 @@ FLAGS +=  `pkg-config opencv --cflags --libs`
 FLAGS +=  -lboost_system -lboost_program_options -lboost_serialization -lboost_filesystem
 
 assignment1: *.cpp *.h
-	$(CXX) -o $@ assignment1.cpp skinmodel.cpp $(FLAGS)
+	$(CXX) -ggdb -o $@ assignment1.cpp skinmodel.cpp $(FLAGS)
 
 .PHONY : clean
 clean:
