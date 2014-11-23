@@ -1,12 +1,20 @@
 #include "skinmodel.h"
 #include <cmath>
 #include <iostream>
+#include <opencv/ml.h>
 
-using namespace std;
+#define voodoo ((Members*) pimpl)
+
+struct Members {
+  bool first_dataset = true;
+  cv::NormalBayesClassifier bayes_classifier;
+};
 
 /// Constructor
 SkinModel::SkinModel()
 {
+  Members* members = new Members();
+  pimpl = (SkinModelPimpl*) members;
 }
 
 /// Destructor
@@ -20,7 +28,6 @@ SkinModel::~SkinModel()
 /// Use this function to initialize/clear data structures used for training the skin model.
 void SkinModel::startTraining()
 {
-    //--- IMPLEMENT THIS ---//
 }
 
 /// Add a new training image/mask pair.  The mask should
@@ -30,7 +37,22 @@ void SkinModel::startTraining()
 /// @param mask: mask which specifies, which pixels are skin/non-skin
 void SkinModel::train(const cv::Mat3b& img, const cv::Mat1b& mask)
 {
-	//--- IMPLEMENT THIS ---//
+  cv::Mat trainData(img.rows*img.cols, 3, CV_32F);
+  cv::Mat responses(img.rows*img.cols, 1, CV_32S);
+
+  for (int row = 0; row < img.rows; ++row) {
+    for (int col = 0; col < img.cols; ++col) {
+      cv::Vec3b bgr = img(row, col);
+      trainData.at<float>((row*col)+col, 0) = bgr[0];
+      trainData.at<float>((row*col)+col, 1) = bgr[1];
+      trainData.at<float>((row*col)+col, 2) = bgr[2];
+      responses.at<int>((row*col)+col, 0) = ((int)mask(row, col) == 255);
+      //std::cout << "[" << (int)bgr[0] << "," << (int)bgr[1] << "," << (int)bgr[2] << "]" << "<--->" << ((int)mask(row,col) == 255) << std::endl;
+    }
+  }
+  // train the bayes classifier
+  voodoo->bayes_classifier.train(trainData, responses, cv::Mat(), cv::Mat(), !voodoo->first_dataset);
+  voodoo->first_dataset = false;
 }
 
 /// Finish the training.  This finalizes the model.  Do not call
@@ -51,27 +73,23 @@ void SkinModel::finishTraining()
 /// @return:    probability mask of skin color likelihood
 cv::Mat1b SkinModel::classify(const cv::Mat3b& img)
 {
-    cv::Mat1b skin = cv::Mat1b::zeros(img.rows, img.cols);
+  cv::Mat1b skin(img.rows, img.cols);
 
-	//--- IMPLEMENT THIS ---//
-    for (int row = 0; row < img.rows; ++row) {
-        for (int col = 0; col < img.cols; ++col) {
+  //cv::Mat samples(img.rows*img.cols, 3, CV_32F);
+  cv::Mat samples(1, 3, CV_32F);
+  cv::Mat responses(1, 1, CV_32S);
 
-			if (false)
-				skin(row, col) = rand()%256;
-
-			if (false)
-				skin(row, col) = img(row,col)[2];
-
-			if (true) {
-			
-				cv::Vec3b bgr = img(row, col);
-				if (bgr[2] > bgr[1] && bgr[1] > bgr[0]) 
-					skin(row, col) = 2*(bgr[2] - bgr[0]);
-			}
-        }
+  for (int row = 0; row < img.rows; ++row) {
+    for (int col = 0; col < img.cols; ++col) {
+      cv::Vec3b bgr = img(row, col);
+      samples.at<float>(0, 0) = bgr[0];
+      samples.at<float>(0, 1) = bgr[1];
+      samples.at<float>(0, 2) = bgr[2];
+      skin.at<char>(row, col) = voodoo->bayes_classifier.predict(samples, &responses);
+      //std::cout << "skin is " << skin(row, col) << ", responses is " << responses.at<float>(0,0) << std::endl;
     }
+  }
 
-    return skin;
+  return skin;
 }
 
